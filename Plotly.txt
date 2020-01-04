@@ -1,0 +1,167 @@
+https://kamino.hatenablog.com/entry/plotly_for_report
+1. ツールのインストール
+最初にplotly, psutil, electron, orcaをインストールしておく必要があります。 plotlyとpsutilはpipからインストールできます。 electronとorcaはNode.jsのパッケージとして公開されているのでnpmからインストールします。
+
+pip install plotly psutil
+npm install -g electron@1.8.4 orca
+他のインストール方法については公式ドキュメントを参照してください
+
+2. テンプレートを選ぶ
+まずはhttps://plot.ly/python/からグラフのテンプレートを選んでコピペしてきましょう。
+
+テンプレートのコードのままではオンライン版Plotlyのワークスペースにデプロイされてしまうので、ローカルにグラフを保存するようコードを書き換えます。
+
+冒頭に以下の2行を追加し、
+
+import plotly.offline as po
+import plotly.io as pio
+末尾のpy.iplot(fig, filename='xxxxx')を次のように書き換えましょう。
+
+po.plot(fig, filename='xxxxx.html')  # HTMLとして保存
+pio.write_image(fig, 'xxxxx.png')    # PNGとして保存(PNG/JPEG/WebP/PDF/SVG/EPS が選択可能)
+これで描画したグラフがHTMLと画像形式で保存されるはずです。 Jupyter Notebookを使っている場合は、冒頭にplotly.offline.init_notebook_mode(connected=True)を追加し、po.plot()をpo.iplot()にすれば実行結果の部分にグラフが描画されます。
+
+例として折れ線グラフのテンプレートを保存してみます。
+
+サンプルコード
+f:id:kamino-dev:20190313165032p:plain
+保存されたグラフ
+ちゃんと画像になっていますね。 この画像はPNGですが、ベクター画像（SVG/PDF/EPS）として保存することもできます。
+
+3. Plotlyのデータ形式
+さて、ここからテンプレートを少しずつ変更して自分好みのフォーマットに調整していくのですが、その前にPlotlyに渡すデータの形式を確認しておきましょう。
+
+print(fig)してみるとわかりますが、figの実体はただのdictionaryです。 少し複雑に見えるテンプレートでも、結局は所定の形式のdictionaryを作成してplot()を呼び出しているだけなのです。 つまりこのツリー構造さえ把握しておけば、グラフの書式を自由に変更できるようになります。
+
+今回はこの中からよく使うプロパティを抜き出してみました。 なお、すべてのプロパティ（キー）の一覧はhttps://plot.ly/python/reference/で確認できます。
+
+※ 各プロパティの値は基本的にPlotlyのデフォルト値を書いています。
+
+fig = dict(
+  data = [
+    # Trace(グラフ化するデータを格納するオブジェクト)のリスト
+    # グラフの種類に応じて
+    #   Scatter/Scattergl/Bar/Box/Pie/Area/Heatmap
+    #   Contour/Histogram/Histogram2D/Histogram2Dcontour
+    #   Ohlc/Candlestick/Table/Scatter3D/Surface/Mesh3D
+    # のいずれかが入る
+    go.Scatter(
+      x = [0, 1], y = [10, 20],  # データ(グラフの種類によっては文字列が入ったり、zがあったりする)
+      mode = 'lines',
+      line = dict(     # 線の書式
+        width = 2,
+      ),
+      marker = dict(   # データ点の書式
+        symbol = 'circle',
+        size = 6,
+      ),
+      showlegend = True,  # 凡例にこのTraceを表示するかどうか
+    ),
+  ],
+  layout = dict(
+    font = dict(       # グローバルのフォント設定
+      family = '"Open Sans", verdana, arial, sans-serif',
+      size = 12,
+      color = '#444',
+    ),
+    title = dict(
+      text = '',       # グラフのタイトル
+      font = dict(),   # タイトルのフォント設定
+    ),
+    width = 700,       # 全体のサイズ
+    height = 450,
+    autosize = True,   # HTMLで表示したときページに合わせてリサイズするかどうか
+    margin = dict(     # グラフ領域の余白設定
+      l = 80, r = 80, t = 100, b = 80,
+      pad = 0,         # グラフから軸のラベルまでのpadding
+      autoexpand = True,  # LegendやSidebarが被ったときに自動で余白を増やすかどうか
+    ),
+    xaxis = dict(      # 2Dグラフ用のx軸の設定
+      title = dict(text = '', font = dict()),  # x軸のラベル
+      type = '-',      # 'linear'、'log'、'date'などに設定可能
+      autorange = True,
+      range = [0, 1],
+      scaleanchor = 'x1', scaleratio = 1,  # 他の軸とのスケールを固定したいときに使う
+      tickmode = 'auto',  # 目盛りの刻み方(目盛り関連の設定項目は他にもいくつかあります)
+    ),
+    yaxis = dict(),    # 2Dグラフ用のy軸の設定、だいたいx軸と一緒
+    scene = dict(      # 3Dグラフ用の設定
+      camera = dict(),
+      xaxis = dict(), yaxis = dict(), zaxis = dict()
+    ),
+    geo = dict(),      # グラフに地図を表示させるときの設定
+    showlegend = True, # 凡例を表示するかどうか
+    legend = dict(
+      font = dict(),   # 凡例のフォント設定
+      x = 1.02, xanchor = 'left',  # 凡例の表示場所の設定
+      y = 1, yanchor = 'auto',
+      bordercolor = '#444', borderwidth = 0,  # 凡例を囲む枠線の設定
+    ),
+    annotations = [],  # グラフ中に注釈を入れたいときに使う
+    shapes = [],       # グラフ中に線や塗りつぶしを挿入したいときに使う
+  ),
+)
+結構多いですね。。 抑えるべき点は以下の3つだと思います。
+
+1点目に、グラフに描画するデータの情報はTraceというオブジェクトの中に格納されます。 このTraceをplotly.graph_objs内のどのクラスから作成するかによって、円グラフや棒グラフなどグラフの種類が変わります。 また、マーカーや線など、データのプロットに関する設定もTraceの中に含まれています。 Traceはリスト形式にまとめられfig['data']に格納されます。
+
+2点目に、グラフ全体のフォーマットに関する設定はfig['layout']に格納されます。 タイトルや軸の設定、凡例の書式などはこの中に含まれています。 ただし、軸の設定は2Dのときと3Dのときで設定すべきプロパティが変わるので注意が必要です。
+
+3点目に、グラフの上に矢印などの注釈（アノテーション）や追加の線を記入したいときはfig['layout']['annotaions']やfig['layout']['shapes']に情報を入れます。
+
+他にもマウスカーソルを当てたときに出てくる情報（hoverlabel）の設定やスライダーの挿入など設定次第で色々と遊べるのですが、今回は静的なグラフを出力することが目的ですので省略しています。
+
+ともあれ、figの中にグラフのすべての情報がKey-Value形式で入っている、という構造はとてもわかりやすいですね。 このツリー構造さえ頭に入れておけばhttps://plot.ly/python/reference/を読みながらサクサク作図できるはずです（ホンマか？）。
+
+4. よく使うレイアウト調整
+さて、ここからは個人的によく使うレイアウト調整の方法についてまとめてみます。
+
+4.1. グラフエリアのサイズを指定したい
+グラフエリアのサイズを直接指定することはできません。 一応、layout=dict(margin=dict(l=50, r=50, t=100, b=50, autoexpand=False), height=450, width=700)のように指定すれば、height/width から t+b/l+r を引いたものがグラフエリアのサイズになるはずです。 値を調整してみてください。
+
+4.2. 軸の向きを反転させたい
+xaxis/yaxis=dict(autorange='reversed')とするか、xaxis/yaxis=dict(range=[100, 0])のように手動で逆順の範囲を指定しましょう。
+
+4.3. 軸を0始まりにしたい
+値の範囲が10~80だけど、グラフ上では0の軸を表示させたい、というときはxaxis/yaxis = dict(rangemode='tozero')。
+
+ただし、値が正負にまたがっている場合、'tozero'は無視されます。 負の値を無視して正の範囲だけ描画したいときは'nonnegative'にしましょう。
+
+その他の場合は、xaxis/yaxis の range を手動で設定しましょう。
+
+4.4. 軸のスケール比を固定したい
+2DグラフでY軸をX軸の5倍に拡大して表示したい場合は、layout=dict(yaxis=dict(scaleanchor='x', scaleratio=5))。
+
+f:id:kamino-dev:20190313232301p:plain
+Y軸のスケールをX軸の5倍にした例
+Y軸の上下が余ってしまっているのが気になる場合は、yaxis=dict(constrain='domain')を追加しておけば自動で切り詰めてくれます。
+
+3Dグラフの場合は、グラフ領域のアスペクト比と各軸のrange幅を調整することで間接的に軸のスケールを調整します。
+
+XYZのrange幅が同じならlayout=dict(scene=dict(aspectmode='cube'))とすれば全ての軸のスケールが等倍になります。 range幅が違ったり等倍以外のスケールに設定したい場合は、layout=dict(scene=dict(aspectmode='manual', aspectratio=dict(x=1, y=2, z=3), xaxis=dict(range=[0, 100]), ....))のようにグラフのアスペクト比を固定した上でrangeを調整しましょう。
+
+4.5. グラフエリアを枠で囲みたい
+軸を描画させるlinewidthとそれを反対側に転写させるmirrorを組み合わせて、layout=dict(xaxis=dict(linewidth=1, mirror=True), yaxis=dict(linewidth=1, mirror=True))です。
+
+f:id:kamino-dev:20190314001247p:plain
+グラフエリアを枠で囲う
+4.6. グリッドを消したい&目盛りを追加したい
+グリッドを消すときはxaxis/yaxis=dict(showgrid=False)。 目盛りを追加するときはxaxis/yaxis=dict(ticks='inside')もしくは'outside'（目盛りの生える方向が変わります）。
+
+f:id:kamino-dev:20190314002237p:plain
+グリッドを消して目盛りと軸線を追加
+4.7. グリッド/目盛りをN刻みor手動設定したい
+5刻みにするときはxaxis/yaxis=dict(dtick=5)、手動設定する場合はxaxis/yaxis=dict(tickvals=[5, 15, 25, 70])のように値をリストで渡してあげればよいです。
+
+4.8. 凡例の位置を変えたい
+凡例の位置のデフォルト設定はlegend=dict(x=1.02, xanchor='left', y=1, yanchor='auto')です。 ここではx,yをグラフの左下を(0,0)、右上を(1,1)としたときの座標系でカウントするので、デフォルトでは凡例ボックスの左エッジがグラフの右端の少し隣にくるよう設定されていることになります。 この値を適当に変えてやればOKです。
+
+4.9. 検定結果（有意差）のマークを書き込みたい
+割と使う機会の多い機能のはずなんですが、公式ではまだサポートされていません。 一応、annotationsとshapesでお絵描きすれば表現できます。
+
+サンプルコード
+f:id:kamino-dev:20190314010417p:plain
+有意差マークを書き込む
+Plotlyたのしいですね。 デフォルトの配色がきれいですし、エラーメッセージも読みやすいのでサクサク使える感じがします。
+
+また便利な設定を発見したら追記していきます。
