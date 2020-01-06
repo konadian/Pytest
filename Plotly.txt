@@ -1,3 +1,5 @@
+https://qiita.com/hausen6/items/b1b54f7325745ae43e47
+https://www.sejuku.net/blog/54287
 https://kamino.hatenablog.com/entry/plotly_for_report
 1. ツールのインストール
 最初にplotly, psutil, electron, orcaをインストールしておく必要があります。 plotlyとpsutilはpipからインストールできます。 electronとorcaはNode.jsのパッケージとして公開されているのでnpmからインストールします。
